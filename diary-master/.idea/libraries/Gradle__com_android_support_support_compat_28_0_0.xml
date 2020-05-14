@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Gradle: com.android.support:support-compat-28.0.0">
+    <ANNOTATIONS>
+      <root url="jar://C:/CookAndroid/.gradle/caches/transforms-1/files-1.1/support-compat-28.0.0.aar/333f0b187434af9aeb98b91cb3fc1f35/annotations.zip!/" />
+    </ANNOTATIONS>
+    <CLASSES>
+      <root url="jar://C:/CookAndroid/.gradle/caches/transforms-1/files-1.1/support-compat-28.0.0.aar/333f0b187434af9aeb98b91cb3fc1f35/jars/classes.jar!/" />
+      <root url="file://C:/CookAndroid/.gradle/caches/transforms-1/files-1.1/support-compat-28.0.0.aar/333f0b187434af9aeb98b91cb3fc1f35/res" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
