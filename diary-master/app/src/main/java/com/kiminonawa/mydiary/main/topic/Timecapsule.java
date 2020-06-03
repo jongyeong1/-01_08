@@ -9,7 +9,7 @@ import com.kiminonawa.mydiary.R;
 
 public class Timecapsule  {
 
-    @Override
+    //@Override
     protected void onCreate(Bundle savedInstanceState) {
 
         onCreate(savedInstanceState);

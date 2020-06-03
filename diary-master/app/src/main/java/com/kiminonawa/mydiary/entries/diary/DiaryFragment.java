@@ -14,6 +14,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -60,6 +61,11 @@ import com.kiminonawa.mydiary.shared.ThemeManager;
 import com.kiminonawa.mydiary.shared.TimeTools;
 import com.kiminonawa.mydiary.shared.ViewTools;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -78,6 +84,7 @@ import static com.kiminonawa.mydiary.shared.PermissionHelper.REQUEST_ACCESS_FINE
 import static com.kiminonawa.mydiary.shared.PermissionHelper.REQUEST_CAMERA_AND_WRITE_ES_PERMISSION;
 
 
+
 /**
  * This page doesn't be used in the movie.
  * I define this page for write diary.
@@ -89,17 +96,15 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
         ClearDialogFragment.ClearDialogCallback {
 
 
-    private String TAG = "DiaryFragment";
+        private String TAG = "DiaryFragment";
 
     /**
      * UI
      */
     private ScrollView ScrollView_diary_content;
-    private LinearLayout LL_diary_item_content, LL_diary_time_information_from, LL_diary_time_information_to;
+    private LinearLayout LL_diary_item_content, LL_diary_time_information;
     private RelativeLayout RL_diary_info;
-    private TextView TV_diary_month_from, TV_diary_date_from, TV_diary_day_from, TV_diary_time_from, TV_diary_location_from;
-    private TextView TV_diary_month_to, TV_diary_date_to, TV_diary_day_to, TV_diary_time_to, TV_diary_location_to;
-    private boolean fromto = true;  // true: from, false: to
+    private TextView TV_diary_month, TV_diary_date, TV_diary_day, TV_diary_time, TV_diary_location;
 
     private Spinner SP_diary_weather, SP_diary_mood;
     private EditText EDT_diary_title;
@@ -116,12 +121,9 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     /**
      * Time
      */
-    private Calendar calendar_from;
-    private TimeTools timeTools_from;
-    private SimpleDateFormat sdf_from = new SimpleDateFormat("HH:mm");
-    private Calendar calendar_to;
-    private TimeTools timeTools_to;
-    private SimpleDateFormat sdf_to = new SimpleDateFormat("HH:mm");
+    private Calendar calendar;
+    private TimeTools timeTools;
+    private SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
 
     /**
      * diary item
@@ -147,13 +149,76 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     private ProgressDialog progressDialog;
     private final static int GPS_TIMEOUT = 20 * 1000;
 
+    /**
+     * 날씨 정보 가져오기
+     */
+    // 네트워크 작업은 AsyncTask 를 사용해야 한다
+    public class WeatherConnection extends AsyncTask<String, String, String> {
+
+        // 백그라운드에서 작업하게 한다
+        @Override
+        public String doInBackground(String... params) {
+
+
+            // Jsoup을 이용한 날씨데이터 Pasing하기.
+            try{
+
+                String path = "http://weather.naver.com/rgn/townWetr.nhn?naverRgnCd=09650510";
+
+                Document document = Jsoup.connect(path).get();
+
+                Elements elements = document.select("em");
+
+                System.out.println(elements);
+
+                Element targetElement = elements.get(2);
+
+                String text = targetElement.text();
+
+                String condition[];             //날씨 저장
+                System.out.println(text);
+
+                condition = text.split("℃");    //섭씨를 중심으로 문자열을 나눔
+                System.out.println(condition[1]);
+
+                return condition[1];
+
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+    public int weather_code(String text){
+        int result = 0;
+
+        switch (text){
+            case "흐림": case "구름많음":
+                result =1;
+                break;
+            case "돌풍":
+                result =2;
+                break;
+            case "비":
+                result = 3;
+                break;
+            case "눈":
+                result = 4;
+                break;
+            case "안개" :
+                result = 5;
+                break;
+             default:
+                 break;
+                 }
+        SP_diary_weather.setSelection(result);
+        return result;
+    }
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        calendar_from = Calendar.getInstance();
-        timeTools_from = TimeTools.getInstance(getActivity().getApplicationContext());
-        calendar_to = Calendar.getInstance();
-        timeTools_to = TimeTools.getInstance(getActivity().getApplicationContext());
+        calendar = Calendar.getInstance();
+        timeTools = TimeTools.getInstance(getActivity().getApplicationContext());
         noLocation = getString(R.string.diary_no_location);
         diaryTempFileManager = new FileManager(getActivity(), getTopicId());
     }
@@ -172,20 +237,13 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
         LinearLayout LL_diary_edit_bar = (LinearLayout) rootView.findViewById(R.id.LL_diary_edit_bar);
         LL_diary_edit_bar.setBackgroundColor(ThemeManager.getInstance().getThemeMainColor(getActivity()));
 
-        LL_diary_time_information_from = (LinearLayout) rootView.findViewById(R.id.LL_diary_time_information_from);
-        LL_diary_time_information_from.setOnClickListener(this);
-        LL_diary_time_information_to = (LinearLayout) rootView.findViewById(R.id.LL_diary_time_information_to);
-        LL_diary_time_information_to.setOnClickListener(this);
-        TV_diary_month_from = (TextView) rootView.findViewById(R.id.TV_diary_month_from);
-        TV_diary_date_from = (TextView) rootView.findViewById(R.id.TV_diary_date_from);
-        TV_diary_day_from = (TextView) rootView.findViewById(R.id.TV_diary_day_from);
-        TV_diary_time_from = (TextView) rootView.findViewById(R.id.TV_diary_time_from);
-        TV_diary_location_from = (TextView) rootView.findViewById(R.id.TV_diary_location_from);
-        TV_diary_month_to = (TextView) rootView.findViewById(R.id.TV_diary_month_to);
-        TV_diary_date_to = (TextView) rootView.findViewById(R.id.TV_diary_date_to);
-        TV_diary_day_to = (TextView) rootView.findViewById(R.id.TV_diary_day_to);
-        TV_diary_time_to = (TextView) rootView.findViewById(R.id.TV_diary_time_to);
-        TV_diary_location_to = (TextView) rootView.findViewById(R.id.TV_diary_location_to);
+        LL_diary_time_information = (LinearLayout) rootView.findViewById(R.id.LL_diary_time_information_from);
+        LL_diary_time_information.setOnClickListener(this);
+        TV_diary_month = (TextView) rootView.findViewById(R.id.TV_diary_month_from);
+        TV_diary_date = (TextView) rootView.findViewById(R.id.TV_diary_date_from);
+        TV_diary_day = (TextView) rootView.findViewById(R.id.TV_diary_day_from);
+        TV_diary_time = (TextView) rootView.findViewById(R.id.TV_diary_time_from);
+        TV_diary_location = (TextView) rootView.findViewById(R.id.TV_diary_location_from);
         rootView.findViewById(IV_diary_location_name_icon_from).setVisibility(View.VISIBLE);
 
         SP_diary_weather = (Spinner) rootView.findViewById(R.id.SP_diary_weather);
@@ -222,6 +280,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
         super.onViewCreated(view, savedInstanceState);
         diaryHandler = new DiaryHandler(this);
         initWeatherSpinner();
+
         initMoodSpinner();
         setCurrentTime(true);
         initLocationManager();
@@ -230,8 +289,18 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
         clearDiaryPage();
         //Revert the auto saved diary
         revertAutoSaveDiary();
-    }
+        WeatherConnection weather = new WeatherConnection();
+        AsyncTask<String, String, String> condition = weather.execute("","");
 
+        try {
+            String con_result = condition.get();
+
+            weather_code(con_result);       // 이 부분 변경
+        }
+        catch (Exception e){
+            SP_diary_weather.setSelection(0);
+        }
+    }
 
     @Override
     public void onStart() {
@@ -291,7 +360,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
                 Place place = PlacePicker.getPlace(getActivity(), data);
                 if (place.getName() != null || !place.getName().equals("")) {
                     //try to spilt the string if it is a local
-                    TV_diary_location_from.setText(place.getName());
+                    TV_diary_location.setText(place.getName());
                     isLocation = true;
                 } else {
                     isLocation = false;
@@ -371,17 +440,12 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
 
     private void setCurrentTime(boolean updateCurrentTime) {
         if (updateCurrentTime) {
-            calendar_from.setTimeInMillis(System.currentTimeMillis());
-            calendar_to.setTimeInMillis(System.currentTimeMillis());
+            calendar.setTimeInMillis(System.currentTimeMillis());
         }
-        TV_diary_month_from.setText(timeTools_from.getMonthsFullName()[calendar_from.get(Calendar.MONTH)]);
-        TV_diary_date_from.setText(String.valueOf(calendar_from.get(Calendar.DAY_OF_MONTH)));
-        TV_diary_day_from.setText(timeTools_from.getDaysFullName()[calendar_from.get(Calendar.DAY_OF_WEEK) - 1]);
-        TV_diary_time_from.setText(sdf_from.format(calendar_from.getTime()));
-        TV_diary_month_to.setText(timeTools_to.getMonthsFullName()[calendar_to.get(Calendar.MONTH)]);
-        TV_diary_date_to.setText(String.valueOf(calendar_to.get(Calendar.DAY_OF_MONTH)));
-        TV_diary_day_to.setText(timeTools_to.getDaysFullName()[calendar_to.get(Calendar.DAY_OF_WEEK) - 1]);
-        TV_diary_time_to.setText(sdf_to.format(calendar_to.getTime()));
+        TV_diary_month.setText(timeTools.getMonthsFullName()[calendar.get(Calendar.MONTH)]);
+        TV_diary_date.setText(String.valueOf(calendar.get(Calendar.DAY_OF_MONTH)));
+        TV_diary_day.setText(timeTools.getDaysFullName()[calendar.get(Calendar.DAY_OF_WEEK) - 1]);
+        TV_diary_time.setText(sdf.format(calendar.getTime()));
     }
 
     private void initLocationManager() {
@@ -394,7 +458,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
             IV_diary_location.setImageResource(R.drawable.ic_location_on_white_24dp);
         } else {
             IV_diary_location.setImageResource(R.drawable.ic_location_off_white_24dp);
-            TV_diary_location_from.setText(noLocation);
+            TV_diary_location.setText(noLocation);
         }
     }
 
@@ -418,6 +482,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     /**
      * Clear and set the UUI
      */
+//삭제시
     private void clearDiaryPage() {
         isLocation = false;
         initLocationIcon();
@@ -444,7 +509,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
                                 diaryItemHelper.get(x).getPosition(),
                                 diaryItemHelper.get(x).getContent()));
             }
-            String locationName = TV_diary_location_from.getText().toString();
+            String locationName = TV_diary_location.getText().toString();
             if (noLocation.equals(locationName)) {
                 locationName = "";
             }
@@ -475,7 +540,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
                 String locationName = autoSaveDiary.getDiaryEntriesLocation();
                 if (locationName != null && !"".equals(locationName)) {
                     isLocation = true;
-                    TV_diary_location_from.setText(locationName);
+                    TV_diary_location.setText(locationName);
                 } else {
                     isLocation = false;
                 }
@@ -523,11 +588,11 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
 
     private void saveDiary() {
         //Create locationName
-        String locationName = TV_diary_location_from.getText().toString();
+        String locationName = TV_diary_location.getText().toString();
         if (noLocation.equals(locationName)) {
             locationName = "";
         }
-        new SaveDiaryTask(getActivity(), calendar_from.getTimeInMillis(), calendar_to.getTimeInMillis(),
+        new SaveDiaryTask(getActivity(), calendar.getTimeInMillis(), calendar.getTimeInMillis(),
                 EDT_diary_title.getText().toString(),
                 SP_diary_mood.getSelectedItemPosition(), SP_diary_weather.getSelectedItemPosition(),
                 //Check  attachment
@@ -687,20 +752,11 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
         //Since JellyBean, the onDateSet() method of the DatePicker class is called twice
         if (view.isShown()) {
-            if (fromto) {
-                calendar_from.set(year, monthOfYear, dayOfMonth);
-                setCurrentTime(false);
-                TimePickerFragment timePickerFragment = TimePickerFragment.newInstance(calendar_from.getTimeInMillis());
-                timePickerFragment.setOnTimeSetListener(this);
-                timePickerFragment.show(getFragmentManager(), "timePickerFragment");
-            }
-            else {
-                calendar_to.set(year, monthOfYear, dayOfMonth);
-                setCurrentTime(false);
-                TimePickerFragment timePickerFragment = TimePickerFragment.newInstance(calendar_to.getTimeInMillis());
-                timePickerFragment.setOnTimeSetListener(this);
-                timePickerFragment.show(getFragmentManager(), "timePickerFragment");
-            }
+            calendar.set(year, monthOfYear, dayOfMonth);
+            setCurrentTime(false);
+            TimePickerFragment timePickerFragment = TimePickerFragment.newInstance(calendar.getTimeInMillis());
+            timePickerFragment.setOnTimeSetListener(this);
+            timePickerFragment.show(getFragmentManager(), "timePickerFragment");
         }
     }
 
@@ -708,14 +764,8 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
         //Since JellyBean, the onTimeSet() method of the TimePicker class is called twice
         if (view.isShown()) {
-            if (fromto) {
-                calendar_from.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                calendar_from.set(Calendar.MINUTE, minute);
-            }
-            else {
-                calendar_to.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                calendar_to.set(Calendar.MINUTE, minute);
-            }
+            calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+            calendar.set(Calendar.MINUTE, minute);
             setCurrentTime(false);
         }
     }
@@ -731,16 +781,9 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.LL_diary_time_information_from:
-                fromto = true;
-                DatePickerFragment datePickerFragment_from = DatePickerFragment.newInstance(calendar_from.getTimeInMillis());
-                datePickerFragment_from.setOnDateSetListener(this);
-                datePickerFragment_from.show(getFragmentManager(), "datePickerFragment_from");
-                break;
-            case R.id.LL_diary_time_information_to:
-                fromto = false;
-                DatePickerFragment datePickerFragment_to = DatePickerFragment.newInstance(calendar_to.getTimeInMillis());
-                datePickerFragment_to.setOnDateSetListener(this);
-                datePickerFragment_to.show(getFragmentManager(), "datePickerFragment_to");
+                DatePickerFragment datePickerFragment = DatePickerFragment.newInstance(calendar.getTimeInMillis());
+                datePickerFragment.setOnDateSetListener(this);
+                datePickerFragment.show(getFragmentManager(), "datePickerFragment");
                 break;
             case R.id.LL_diary_item_content:
                 if (diaryItemHelper.getItemSize() == 0) {
@@ -830,7 +873,7 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
         public void handleMessage(Message msg) {
             DiaryFragment theFrag = mFrag.get();
             if (theFrag != null) {
-                theFrag.TV_diary_location_from.setText(getLocationName(theFrag));
+                theFrag.TV_diary_location.setText(getLocationName(theFrag));
                 theFrag.initLocationIcon();
             }
         }
