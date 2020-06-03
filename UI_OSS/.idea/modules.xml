@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/MyDiary-master.iml" filepath="$PROJECT_DIR$/MyDiary-master.iml" group="MyDiary-master" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="MyDiary-master/app" />
+      <module fileurl="file://$PROJECT_DIR$/lib_module/freso/gestures/gestures.iml" filepath="$PROJECT_DIR$/lib_module/freso/gestures/gestures.iml" group="MyDiary-master/gestures" />
+      <module fileurl="file://$PROJECT_DIR$/lib_module/freso/zoomable/zoomable.iml" filepath="$PROJECT_DIR$/lib_module/freso/zoomable/zoomable.iml" group="MyDiary-master/zoomable" />
+    </modules>
+  </component>
+</project>
