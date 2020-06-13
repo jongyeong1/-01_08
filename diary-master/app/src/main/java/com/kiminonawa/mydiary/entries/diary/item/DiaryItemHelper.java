@@ -1,4 +1,4 @@
-package com.kiminonawa.mydiary.entries.diary.item;
+﻿package com.kiminonawa.mydiary.entries.diary.item;
 
 import android.content.Context;
 import android.widget.LinearLayout;
@@ -10,6 +10,7 @@ import com.kiminonawa.mydiary.shared.statusbar.ChinaPhoneHelper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Observable;
+
 
 /**
  * Created by daxia on 2016/11/19.

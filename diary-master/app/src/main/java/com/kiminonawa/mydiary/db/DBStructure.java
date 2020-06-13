@@ -5,6 +5,7 @@ import android.provider.BaseColumns;
 /**
  * Created by daxia on 2016/4/9.
  */
+
 public class DBStructure {
 
 

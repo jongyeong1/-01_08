@@ -1,4 +1,4 @@
-package com.kiminonawa.mydiary.entries.diary;
+﻿package com.kiminonawa.mydiary.entries.diary;
 
 
 
@@ -203,10 +203,10 @@ public class DiaryFragment extends BaseDiaryFragment implements View.OnClickList
             case "흐림":
                 result =1;
                 break;
-            case "돌풍":
+            case "돌풍":case "바람":
                 result =2;
                 break;
-            case "비":
+            case "비":case "태풍":
                 result = 3;
                 break;
             case "눈":
